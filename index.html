@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth" id="html-root">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Interface // Kartik Agnihotri</title>
+    
+    <!-- Google Fonts: JetBrains Mono (Tech) and Inter (Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable class-based dark mode
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151e32',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        'pcb-green': '#22c55e',
+                        'pcb-dark': '#14532d',
+                        'signal-blue': '#06b6d4',
+                        'alert-amber': '#f59e0b',
+                    },
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                        sans: ['"Inter"', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'spin-slow': 'spin 4s linear infinite',
+                        'scanline': 'scanline 8s linear infinite',
+                        'blink': 'blink 1s step-end infinite',
+                    },
+                    backgroundImage: {
+                        // Dark Mode Grid
+                        'grid-pattern': "linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px)",
+                        // Light Mode Grid (Blueprint Style)
+                        'grid-pattern-light': "linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Theme Initialization Script (Prevents Flash) -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* Light mode track */
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #0f172a; /* Dark mode track */
+            border-left: 1px solid #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* Light mode thumb */
+            border: 1px solid #94a3b8;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border: 1px solid #22c55e;
+            border-radius: 0px; 
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #22c55e; 
+        }
+
+        /* CRT Scanline Effect Overlay (Dark Mode Only) */
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            display: none; /* Hidden in light mode by default */
+        }
+        .dark .crt-overlay {
+            display: block;
+        }
+
+        /* Hardware Switch Button Active State */
+        .hardware-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0px 0px 0px #14532d;
+        }
+
+        /* Radar Animation */
+        .radar-sweep {
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(34, 197, 94, 0.4) 360deg);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-300 font-sans selection:bg-pcb-green selection:text-slate-900 overflow-x-hidden relative transition-colors duration-300">
+
+    <!-- Background Grid -->
+    <div class="fixed inset-0 bg-grid-pattern-light dark:bg-grid-pattern bg-[size:40px_40px] opacity-40 dark:opacity-20 pointer-events-none z-0 transition-all duration-300"></div>
+    
+    <!-- CRT Overlay (Dark Mode Only) -->
+    <div class="fixed inset-0 crt-overlay z-50 pointer-events-none opacity-20"></div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-40 bg-white/80 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-pcb-green text-xl animate-pulse-slow"></i>
+                    <span class="font-mono font-bold text-slate-900 dark:text-white tracking-wider text-lg">KARTIK <span class="text-pcb-green">AGNIHOTRI</span></span>
+                </div>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center gap-6">
+                    <div class="flex items-baseline space-x-6 font-mono text-sm font-medium">
+                        <a href="#bios" class="hover:text-pcb-green transition-colors duration-300">./BIOS</a>
+                        <a href="#chipset" class="hover:text-pcb-green transition-colors duration-300">./SKILLS</a>
+                        <a href="#schematics" class="hover:text-pcb-green transition-colors duration-300">./PROJECTS</a>
+                        <a href="#logs" class="hover:text-pcb-green transition-colors duration-300">./LOGS</a>
+                        <a href="#terminal" class="hover:text-pcb-green transition-colors duration-300">./CONTACT</a>
+                    </div>
+                    <!-- Theme Toggle Button -->
+                    <button onclick="toggleTheme()" class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-yellow-400 hover:ring-2 ring-pcb-green transition-all">
+                        <i class="fa-solid fa-sun dark:hidden"></i>
+                        <i class="fa-solid fa-moon hidden dark:block"></i>
+                    </button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="flex md:hidden gap-4">
+                    <button onclick="toggleTheme()" class="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-yellow-400">
+                        <i class="fa-solid fa-sun dark:hidden"></i>
+                        <i class="fa-solid fa-moon hidden dark:block"></i>
+                    </button>
+                    <button type="button" onclick="toggleMobileMenu()" class="bg-slate-100 dark:bg-slate-800 p-2 rounded-md text-slate-600 dark:text-gray-400 hover:text-pcb-green focus:outline-none ring-1 ring-slate-200 dark:ring-slate-700">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu (Hidden by default) -->
+        <div class="hidden md:hidden bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-700 backdrop-blur-xl absolute w-full left-0 top-16 shadow-lg" id="mobile-menu">
+            <div class="px-4 pt-4 pb-6 space-y-2 font-mono text-sm">
+                <a href="#bios" onclick="toggleMobileMenu()" class="text-slate-600 dark:text-gray-300 hover:text-pcb-green hover:bg-slate-50 dark:hover:bg-slate-800 block px-3 py-3 rounded-md transition-colors border-l-2 border-transparent hover:border-pcb-green">./BIOS (Home)</a>
+                <a href="#chipset" onclick="toggleMobileMenu()" class="text-slate-600 dark:text-gray-300 hover:text-pcb-green hover:bg-slate-50 dark:hover:bg-slate-800 block px-3 py-3 rounded-md transition-colors border-l-2 border-transparent hover:border-pcb-green">./CHIPSETS (Skills)</a>
+                <a href="#schematics" onclick="toggleMobileMenu()" class="text-slate-600 dark:text-gray-300 hover:text-pcb-green hover:bg-slate-50 dark:hover:bg-slate-800 block px-3 py-3 rounded-md transition-colors border-l-2 border-transparent hover:border-pcb-green">./SCHEMATICS (Projects)</a>
+                <a href="#logs" onclick="toggleMobileMenu()" class="text-slate-600 dark:text-gray-300 hover:text-pcb-green hover:bg-slate-50 dark:hover:bg-slate-800 block px-3 py-3 rounded-md transition-colors border-l-2 border-transparent hover:border-pcb-green">./LOGS (Resume)</a>
+                <a href="#terminal" onclick="toggleMobileMenu()" class="text-slate-600 dark:text-gray-300 hover:text-pcb-green hover:bg-slate-50 dark:hover:bg-slate-800 block px-3 py-3 rounded-md transition-colors border-l-2 border-transparent hover:border-pcb-green">./TERMINAL (Contact)</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- SECTION A: THE BIOS (HERO) -->
+    <section id="bios" class="relative z-10 min-h-screen flex items-center justify-center pt-20 pb-12">
+        <!-- Radial Gradient Glow -->
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-pcb-green/10 dark:bg-pcb-green/5 rounded-full blur-[60px] md:blur-[100px] pointer-events-none"></div>
+
+        <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
+            
+            <!-- Left: Text Content -->
+            <div class="order-2 md:order-1 text-center md:text-left">
+                <div class="font-mono text-signal-blue mb-4 flex items-center justify-center md:justify-start gap-2">
+                    <span class="w-2 h-2 bg-signal-blue rounded-full animate-ping"></span>
+                    SYSTEM_READY...
+                </div>
+                <h1 class="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
+                    HELLO, WORLD.<br>
+                    I AM <span class="text-pcb-green">KARTIK</span>
+                </h1>
+                <div class="h-8 mb-6 md:mb-8 font-mono text-xl md:text-2xl text-slate-600 dark:text-slate-400">
+                    <span class="text-pcb-green">></span> <span id="typewriter"></span><span class="animate-blink">_</span>
+                </div>
+                <p class="text-slate-600 dark:text-slate-400 max-w-lg mx-auto md:mx-0 mb-8 leading-relaxed">
+                    Motivated and detail-oriented ECE graduate skilled in Verilog HDL, Digital Design, and FPGA implementation. Passionate about building efficient digital systems and RTL coding.
+                </p>
+                
+                <!-- Hardware Switch Button -->
+                <a href="#logs" class="hardware-btn inline-flex items-center gap-3 bg-pcb-green text-slate-950 font-mono font-bold px-8 py-4 rounded-sm border-2 border-pcb-dark shadow-[4px_4px_0px_#14532d] transition-all hover:bg-green-400 hover:shadow-[2px_2px_0px_#14532d] hover:translate-y-[2px]">
+                    <i class="fa-solid fa-file-code"></i>
+                    VIEW_LOGS (RESUME)
+                </a>
+            </div>
+
+            <!-- Right: Radar/Schematic Animation -->
+            <div class="order-1 md:order-2 flex justify-center items-center relative h-[300px] md:h-[400px]">
+                <!-- Outer Ring -->
+                <div class="absolute w-60 h-60 md:w-80 md:h-80 border border-slate-300 dark:border-slate-700 rounded-full flex items-center justify-center">
+                    <div class="absolute w-full h-[1px] bg-slate-200 dark:bg-slate-800"></div>
+                    <div class="absolute h-full w-[1px] bg-slate-200 dark:bg-slate-800"></div>
+                </div>
+                <!-- Middle Ring -->
+                <div class="absolute w-44 h-44 md:w-60 md:h-60 border border-dashed border-slate-400 dark:border-slate-600 rounded-full animate-spin-slow"></div>
+                <!-- Inner Ring -->
+                <div class="absolute w-28 h-28 md:w-40 md:h-40 border-2 border-pcb-green/30 rounded-full flex items-center justify-center overflow-hidden bg-white/5 dark:bg-slate-900/50 backdrop-blur-sm">
+                    <div class="w-full h-full radar-sweep animate-spin"></div>
+                </div>
+                <!-- Center Core -->
+                <div class="absolute w-4 h-4 bg-pcb-green rounded-full shadow-[0_0_15px_#22c55e] animate-pulse"></div>
+                
+                <!-- Floating Elements -->
+                <div class="absolute top-4 right-10 md:top-10 md:right-20 font-mono text-[10px] md:text-xs text-pcb-green bg-white/80 dark:bg-slate-900/80 px-2 py-1 border border-pcb-green/30 rounded shadow-sm">
+                    V_IN: 3.3V
+                </div>
+                <div class="absolute bottom-4 left-10 md:bottom-10 md:left-20 font-mono text-[10px] md:text-xs text-signal-blue bg-white/80 dark:bg-slate-900/80 px-2 py-1 border border-signal-blue/30 rounded shadow-sm">
+                    FREQ: 50MHz
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION B: CHIPSET (SKILLS) -->
+    <section id="chipset" class="relative z-10 py-20 bg-white/50 dark:bg-slate-900/50 border-y border-slate-200 dark:border-slate-800 scroll-mt-16 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center gap-4 mb-12">
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+                <h2 class="text-2xl md:text-3xl font-mono font-bold text-slate-800 dark:text-white text-center"><span class="text-pcb-green">02.</span> INSTALLED_CHIPSETS</h2>
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+                <!-- Skill Chip 1 -->
+                <div class="group relative bg-white dark:bg-slate-850 p-6 rounded-sm border border-slate-200 dark:border-slate-700 hover:border-pcb-green hover:shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:-translate-y-2 transition-all duration-300 shadow-sm">
+                    <div class="absolute -left-[2px] top-4 bottom-4 w-[4px] border-r-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-pcb-green transition-colors"></div>
+                    <div class="absolute -right-[2px] top-4 bottom-4 w-[4px] border-l-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-pcb-green transition-colors"></div>
+                    <div class="text-center">
+                        <i class="fa-solid fa-code text-4xl text-slate-400 dark:text-slate-500 group-hover:text-pcb-green mb-4 transition-colors"></i>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Verilog HDL</h3>
+                        <p class="text-xs font-mono text-slate-500 dark:text-slate-400">System Verilog / RTL</p>
+                    </div>
+                </div>
+
+                <!-- Skill Chip 2 -->
+                <div class="group relative bg-white dark:bg-slate-850 p-6 rounded-sm border border-slate-200 dark:border-slate-700 hover:border-signal-blue hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:-translate-y-2 transition-all duration-300 shadow-sm">
+                    <div class="absolute -left-[2px] top-4 bottom-4 w-[4px] border-r-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-signal-blue transition-colors"></div>
+                    <div class="absolute -right-[2px] top-4 bottom-4 w-[4px] border-l-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-signal-blue transition-colors"></div>
+                    <div class="text-center">
+                        <i class="fa-solid fa-microchip text-4xl text-slate-400 dark:text-slate-500 group-hover:text-signal-blue mb-4 transition-colors"></i>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">FPGA Design</h3>
+                        <p class="text-xs font-mono text-slate-500 dark:text-slate-400">Xilinx Vivado / Altera</p>
+                    </div>
+                </div>
+
+                <!-- Skill Chip 3 -->
+                <div class="group relative bg-white dark:bg-slate-850 p-6 rounded-sm border border-slate-200 dark:border-slate-700 hover:border-alert-amber hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:-translate-y-2 transition-all duration-300 shadow-sm">
+                    <div class="absolute -left-[2px] top-4 bottom-4 w-[4px] border-r-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-alert-amber transition-colors"></div>
+                    <div class="absolute -right-[2px] top-4 bottom-4 w-[4px] border-l-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-alert-amber transition-colors"></div>
+                    <div class="text-center">
+                        <i class="fa-solid fa-bug text-4xl text-slate-400 dark:text-slate-500 group-hover:text-alert-amber mb-4 transition-colors"></i>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Verification</h3>
+                        <p class="text-xs font-mono text-slate-500 dark:text-slate-400">ModelSim / QuestaSim</p>
+                    </div>
+                </div>
+
+                <!-- Skill Chip 4 -->
+                <div class="group relative bg-white dark:bg-slate-850 p-6 rounded-sm border border-slate-200 dark:border-slate-700 hover:border-purple-500 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:-translate-y-2 transition-all duration-300 shadow-sm">
+                    <div class="absolute -left-[2px] top-4 bottom-4 w-[4px] border-r-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-purple-500 transition-colors"></div>
+                    <div class="absolute -right-[2px] top-4 bottom-4 w-[4px] border-l-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-purple-500 transition-colors"></div>
+                    <div class="text-center">
+                        <i class="fa-brands fa-python text-4xl text-slate-400 dark:text-slate-500 group-hover:text-purple-500 mb-4 transition-colors"></i>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Programming</h3>
+                        <p class="text-xs font-mono text-slate-500 dark:text-slate-400">C / Python / Linux</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION C: SCHEMATICS (PROJECTS) -->
+    <section id="schematics" class="relative z-10 py-24 scroll-mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center gap-4 mb-16">
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+                <h2 class="text-2xl md:text-3xl font-mono font-bold text-slate-800 dark:text-white text-center"><span class="text-signal-blue">03.</span> PROJECT_SCHEMATICS</h2>
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Project 1 -->
+                <div class="relative bg-white/50 dark:bg-white/5 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-8 rounded-sm overflow-hidden group hover:border-pcb-green transition-colors shadow-lg dark:shadow-none">
+                    <div class="flex flex-col sm:flex-row justify-between items-start mb-6 border-b border-slate-200 dark:border-slate-700 pb-4">
+                        <div class="mb-2 sm:mb-0">
+                            <span class="font-mono text-xs text-slate-500 block">PROJECT ID: #001</span>
+                            <h3 class="text-2xl font-bold text-slate-800 dark:text-white group-hover:text-pcb-green transition-colors">Traffic Light Controller</h3>
+                        </div>
+                        <div class="flex flex-col items-start sm:items-end">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-pcb-green animate-pulse"></span>
+                                <span class="font-mono text-xs text-pcb-green">COMPLETE</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-300 mb-6 font-light">
+                        Designed an FSM-based controller in Verilog to automate 4-way junction signals. Features timer-based switching, emergency modes, and pedestrian logic. Improved efficiency by 40%.
+                    </p>
+                    <div class="flex flex-wrap gap-2 mb-6">
+                        <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-pcb-dark dark:text-pcb-green text-xs font-mono border border-slate-200 dark:border-slate-700">Verilog</span>
+                        <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-pcb-dark dark:text-pcb-green text-xs font-mono border border-slate-200 dark:border-slate-700">Xilinx Vivado</span>
+                        <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-pcb-dark dark:text-pcb-green text-xs font-mono border border-slate-200 dark:border-slate-700">FSM</span>
+                    </div>
+                    <a href="#" class="inline-flex items-center text-sm font-mono text-slate-800 dark:text-white hover:text-pcb-green transition-colors">[ VIEW DETAILS ] <i class="fa-solid fa-arrow-right ml-2 text-xs"></i></a>
+                </div>
+
+                <!-- Project 2 -->
+                <div class="relative bg-white/50 dark:bg-white/5 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-8 rounded-sm overflow-hidden group hover:border-alert-amber transition-colors shadow-lg dark:shadow-none">
+                    <div class="flex flex-col sm:flex-row justify-between items-start mb-6 border-b border-slate-200 dark:border-slate-700 pb-4">
+                        <div class="mb-2 sm:mb-0">
+                            <span class="font-mono text-xs text-slate-500 block">PROJECT ID: #002</span>
+                            <h3 class="text-2xl font-bold text-slate-800 dark:text-white group-hover:text-alert-amber transition-colors">Parking Management System</h3>
+                        </div>
+                        <div class="flex flex-col items-start sm:items-end">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-alert-amber animate-pulse"></span>
+                                <span class="font-mono text-xs text-alert-amber">COMPLETE</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-300 mb-6 font-light">
+                        Developed a Verilog-based slot allocation controller using counters and sensor logic. Built automated logic for entry/exit detection and parking availability status.
+                    </p>
+                    <div class="flex flex-wrap gap-2 mb-6">
+                        <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-alert-amber text-xs font-mono border border-slate-200 dark:border-slate-700">Verilog HDL</span>
+                        <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-alert-amber text-xs font-mono border border-slate-200 dark:border-slate-700">Simulation</span>
+                        <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-alert-amber text-xs font-mono border border-slate-200 dark:border-slate-700">Sensor Logic</span>
+                    </div>
+                    <a href="#" class="inline-flex items-center text-sm font-mono text-slate-800 dark:text-white hover:text-alert-amber transition-colors">[ VIEW DETAILS ] <i class="fa-solid fa-code ml-2 text-xs"></i></a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION D: SYSTEM LOGS (EDUCATION & EXPERIENCE) -->
+    <section id="logs" class="relative z-10 py-20 bg-white/50 dark:bg-slate-900/50 border-y border-slate-200 dark:border-slate-800 scroll-mt-16 transition-colors">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center gap-4 mb-12">
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+                <h2 class="text-2xl md:text-3xl font-mono font-bold text-slate-800 dark:text-white text-center"><span class="text-purple-600 dark:text-purple-400">04.</span> SYSTEM_LOGS</h2>
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+            </div>
+
+            <!-- Timeline Container -->
+            <div class="relative border-l-2 border-slate-300 dark:border-slate-700 ml-4 md:ml-6 space-y-12">
+                
+                <!-- Log Entry 1: Internship -->
+                <div class="relative pl-8 md:pl-12 group">
+                    <!-- Dot Node -->
+                    <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white dark:bg-slate-950 border-2 border-purple-500 group-hover:bg-purple-500 group-hover:scale-125 transition-all shadow-md dark:shadow-[0_0_10px_rgba(192,132,252,0.5)]"></div>
+                    
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white font-mono group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Design & Verification Intern</h3>
+                        <span class="text-xs font-mono text-slate-500 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 w-fit mt-1 sm:mt-0">FEB 2024 - MAY 2024</span>
+                    </div>
+                    <h4 class="text-purple-600 dark:text-purple-400 font-mono text-sm mb-4">Logic Cells Technologies</h4>
+                    <ul class="list-none space-y-2 text-slate-600 dark:text-slate-300 font-light text-sm">
+                        <li class="flex items-start gap-3">
+                            <span class="text-purple-500 mt-1">>></span>
+                            Contributed to the development of UVM Testbench components and Test cases for Memory Subsystem with APB Interface.
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-purple-500 mt-1">>></span>
+                            Participated in training sessions on System Verilog and UVM for design and verification projects.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Log Entry 2: Education -->
+                <div class="relative pl-8 md:pl-12 group">
+                    <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white dark:bg-slate-950 border-2 border-signal-blue group-hover:bg-signal-blue group-hover:scale-125 transition-all shadow-md dark:shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
+                    
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white font-mono group-hover:text-signal-blue transition-colors">B.E. in Electronics & Communication</h3>
+                        <span class="text-xs font-mono text-slate-500 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 w-fit mt-1 sm:mt-0">GRADUATE</span>
+                    </div>
+                    <h4 class="text-signal-blue font-mono text-sm mb-4">MVJ College of Engineering, Bengaluru</h4>
+                    <div class="bg-white dark:bg-slate-850 p-4 rounded border border-slate-200 dark:border-slate-700 inline-block mb-2 shadow-sm">
+                        <div class="font-mono text-xs text-slate-500 dark:text-slate-400">MEMORY_CAPACITY (CGPA):</div>
+                        <div class="text-2xl font-bold text-slate-800 dark:text-white">8.9 / 10.0</div>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm mt-2">Active student with consistent academic performance up to the sixth semester.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION E: CERTIFICATIONS -->
+    <section id="protocols" class="relative z-10 py-24 scroll-mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center gap-4 mb-12">
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+                <h2 class="text-2xl md:text-3xl font-mono font-bold text-slate-800 dark:text-white text-center"><span class="text-alert-amber">05.</span> AUTH_PROTOCOLS</h2>
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Cert 1 -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 relative overflow-hidden group hover:border-alert-amber transition-colors shadow-lg dark:shadow-none rounded-sm">
+                    <div class="absolute top-0 right-0 p-2 opacity-10 dark:opacity-50">
+                        <i class="fa-solid fa-certificate text-6xl text-slate-400 dark:text-slate-800 group-hover:text-alert-amber/20 transition-colors"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="text-alert-amber font-mono text-xs mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-check-circle"></i> VERIFIED
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">VLSI Design Flow: RTL to GDS</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">NPTEL Course</p>
+                        <span class="text-xs font-mono text-slate-500 border border-slate-300 dark:border-slate-700 px-2 py-1 bg-slate-50 dark:bg-transparent">Nov 2025</span>
+                    </div>
+                </div>
+
+                <!-- Cert 2 -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 relative overflow-hidden group hover:border-pcb-green transition-colors shadow-lg dark:shadow-none rounded-sm">
+                    <div class="absolute top-0 right-0 p-2 opacity-10 dark:opacity-50">
+                        <i class="fa-solid fa-microchip text-6xl text-slate-400 dark:text-slate-800 group-hover:text-pcb-green/20 transition-colors"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="text-pcb-green font-mono text-xs mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-check-circle"></i> VERIFIED
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">Verilog HDL Fundamentals</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Udemy</p>
+                        <span class="text-xs font-mono text-slate-500 border border-slate-300 dark:border-slate-700 px-2 py-1 bg-slate-50 dark:bg-transparent">Digital Design</span>
+                    </div>
+                </div>
+
+                <!-- Cert 3 -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 relative overflow-hidden group hover:border-signal-blue transition-colors shadow-lg dark:shadow-none rounded-sm">
+                    <div class="absolute top-0 right-0 p-2 opacity-10 dark:opacity-50">
+                        <i class="fa-solid fa-shield-halved text-6xl text-slate-400 dark:text-slate-800 group-hover:text-signal-blue/20 transition-colors"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="text-signal-blue font-mono text-xs mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-check-circle"></i> VERIFIED
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">Ethical Hacking</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">NPTEL Course</p>
+                        <span class="text-xs font-mono text-slate-500 border border-slate-300 dark:border-slate-700 px-2 py-1 bg-slate-50 dark:bg-transparent">Nov 2025</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION F: ACHIEVEMENTS (BENCHMARKS) -->
+    <section id="benchmarks" class="relative z-10 py-20 bg-white/50 dark:bg-slate-900/50 border-y border-slate-200 dark:border-slate-800 scroll-mt-16 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center gap-4 mb-12">
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+                <h2 class="text-2xl md:text-3xl font-mono font-bold text-slate-800 dark:text-white text-center"><span class="text-pink-500">06.</span> SYSTEM_BENCHMARKS</h2>
+                <div class="h-[1px] flex-1 bg-slate-300 dark:bg-slate-700"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Achievement 1 -->
+                <div class="flex gap-6 items-start p-4 hover:bg-white dark:hover:bg-slate-800 rounded transition-colors">
+                    <div class="flex-shrink-0 w-16 h-16 bg-slate-100 dark:bg-slate-800 border border-pink-500/50 flex items-center justify-center rounded-sm text-pink-500">
+                        <i class="fa-solid fa-layer-group text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">FPGA Workshop</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-2 font-mono">Digital System Design</p>
+                        <p class="text-slate-600 dark:text-slate-500 text-sm">Actively participated in a hands-on workshop on "Digital System Design using Altera FPGA", gaining practical exposure to hardware synthesis.</p>
+                    </div>
+                </div>
+
+                <!-- Achievement 2 -->
+                <div class="flex gap-6 items-start p-4 hover:bg-white dark:hover:bg-slate-800 rounded transition-colors">
+                    <div class="flex-shrink-0 w-16 h-16 bg-slate-100 dark:bg-slate-800 border border-pink-500/50 flex items-center justify-center rounded-sm text-pink-500">
+                        <i class="fa-solid fa-star text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Academic Excellence</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-2 font-mono">CGPA 8.9</p>
+                        <p class="text-slate-600 dark:text-slate-500 text-sm">Maintained a strong academic record (8.9 CGPA) throughout the Bachelor of Engineering program at MVJ College of Engineering.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION G: TERMINAL (CONTACT) -->
+    <section id="terminal" class="relative z-10 py-24">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-2xl md:text-3xl font-mono font-bold text-slate-800 dark:text-white"><span class="text-pcb-green">07.</span> OPEN_COMM_LINK</h2>
+            </div>
+
+            <!-- Terminal Window -->
+            <div class="bg-slate-100 dark:bg-slate-950 rounded-lg shadow-2xl border border-slate-300 dark:border-slate-700 overflow-hidden font-mono">
+                <!-- Terminal Header -->
+                <div class="bg-slate-200 dark:bg-slate-800 px-4 py-2 flex items-center gap-2 border-b border-slate-300 dark:border-slate-700">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span class="ml-4 text-xs text-slate-600 dark:text-slate-400">kartik@portfolio:~/contact-form</span>
+                </div>
+
+                <!-- Terminal Body -->
+                <div class="p-6 md:p-8">
+                    <div class="mb-6 text-sm text-slate-600 dark:text-slate-400">
+                        <p class="mb-2">Initializing secure connection...</p>
+                        <p class="mb-2 text-pcb-green">Connection established.</p>
+                        <p class="text-slate-800 dark:text-slate-300 font-bold">Available Endpoints:</p>
+                        <ul class="list-disc list-inside ml-4 mb-4 text-xs mt-2">
+                            <li><span class="text-signal-blue">EMAIL:</span> kartikagnihotri2004@gmail.com</li>
+                            <li><span class="text-signal-blue">LINKEDIN:</span> linkedin.com/in/kartik-agnihotri-ab1bb4359</li>
+                            <li><span class="text-signal-blue">PHONE:</span> +91 7483040588</li>
+                        </ul>
+                        <p>Please enter transmission details below.</p>
+                    </div>
+
+                    <!-- Status Message Container (Hidden by default) -->
+                    <div id="form-status" class="hidden p-6 text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pcb-green/10 text-pcb-green mb-4">
+                            <i class="fa-solid fa-check text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">TRANSMISSION SUCCESSFUL</h3>
+                        <p class="text-slate-600 dark:text-slate-400 font-mono text-sm">Payload delivered to remote server.</p>
+                        <button onclick="resetForm()" class="mt-6 text-sm text-pcb-green hover:underline">Send another message</button>
+                    </div>
+
+                    <form id="contact-form" class="space-y-6" action="https://formspree.io/f/xwpgqlqp" method="POST">
+                        <div class="relative">
+                            <label class="block text-xs text-slate-500 dark:text-slate-500 mb-1">VAR: SENDER_NAME</label>
+                            <div class="flex items-center border-b border-slate-300 dark:border-slate-700 focus-within:border-pcb-green transition-colors">
+                                <span class="text-pcb-green mr-2">$</span>
+                                <input type="text" name="name" class="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none py-2 placeholder-slate-400 dark:placeholder-slate-600" placeholder="Enter Name">
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <label class="block text-xs text-slate-500 dark:text-slate-500 mb-1">VAR: TARGET_EMAIL</label>
+                            <div class="flex items-center border-b border-slate-300 dark:border-slate-700 focus-within:border-pcb-green transition-colors">
+                                <span class="text-pcb-green mr-2">$</span>
+                                <input type="email" name="email" class="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none py-2 placeholder-slate-400 dark:placeholder-slate-600" placeholder="Enter Email">
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <label class="block text-xs text-slate-500 dark:text-slate-500 mb-1">VAR: PAYLOAD_MESSAGE</label>
+                            <div class="flex items-start border-b border-slate-300 dark:border-slate-700 focus-within:border-pcb-green transition-colors">
+                                <span class="text-pcb-green mr-2 mt-2">$</span>
+                                <textarea name="message" rows="3" class="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none py-2 placeholder-slate-400 dark:placeholder-slate-600 resize-none" placeholder="Enter Message"></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="mt-4 w-full md:w-auto bg-slate-200 dark:bg-slate-800 hover:bg-pcb-green hover:text-slate-900 text-pcb-dark dark:text-pcb-green border border-pcb-green px-6 py-3 text-sm font-bold transition-all duration-300">
+                            > EXECUTE_SEND();
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative z-10 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 py-8 text-center font-mono text-xs text-slate-500 transition-colors">
+        <p>
+            SYSTEM STATUS: ONLINE <span class="mx-2">|</span> 
+            DESIGNED BY KARTIK AGNIHOTRI <span class="mx-2">|</span> 
+            &copy; 2025
+        </p>
+        <div class="mt-4 flex justify-center gap-6 text-lg">
+            <a href="https://github.com/Kartik7408" class="hover:text-pcb-green transition-colors"><i class="fa-brands fa-github"></i></a>
+            <a href="https://www.linkedin.com/in/kartik-agnihotri-ab1bb4359" class="hover:text-signal-blue transition-colors"><i class="fa-brands fa-linkedin"></i></a>
+            <a href="mailto:kartikagnihotri2004@gmail.com" class="hover:text-alert-amber transition-colors"><i class="fa-solid fa-envelope"></i></a>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Form Submission Logic
+        const form = document.getElementById('contact-form');
+        const statusDiv = document.getElementById('form-status');
+
+        if (form) {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(form);
+                const button = form.querySelector('button[type="submit"]');
+                const originalText = button.innerHTML;
+                
+                // Loading State
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> TRANSMITTING...';
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: form.method,
+                        body: formData,
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        form.classList.add('hidden');
+                        statusDiv.classList.remove('hidden');
+                        form.reset();
+                    } else {
+                        alert('Transmission Error: Server rejected payload.');
+                    }
+                } catch (error) {
+                    alert('Network Error: Connection failed.');
+                } finally {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }
+            });
+        }
+
+        function resetForm() {
+            statusDiv.classList.add('hidden');
+            form.classList.remove('hidden');
+        }
+
+        // Typing Effect Logic
+        const textElement = document.getElementById('typewriter');
+        const phrases = ['ECE Graduate', 'Digital Design Engineer', 'FPGA Enthusiast', 'Verilog Developer'];
+        let phraseIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let typeSpeed = 100;
+
+        function type() {
+            const currentPhrase = phrases[phraseIndex];
+            
+            if (isDeleting) {
+                textElement.textContent = currentPhrase.substring(0, charIndex - 1);
+                charIndex--;
+                typeSpeed = 50; // Faster deletion
+            } else {
+                textElement.textContent = currentPhrase.substring(0, charIndex + 1);
+                charIndex++;
+                typeSpeed = 100; // Normal typing
+            }
+
+            if (!isDeleting && charIndex === currentPhrase.length) {
+                isDeleting = true;
+                typeSpeed = 2000; // Pause at end of phrase
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                phraseIndex = (phraseIndex + 1) % phrases.length;
+                typeSpeed = 500; // Pause before new phrase
+            }
+
+            setTimeout(type, typeSpeed);
+        }
+
+        // Initialize typing on load
+        document.addEventListener('DOMContentLoaded', type);
+
+        // Scroll Reveal Effect
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                    entry.target.classList.remove('opacity-0', 'translate-y-10');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section > div').forEach(el => {
+            el.classList.add('transition-all', 'duration-1000', 'opacity-0', 'translate-y-10');
+            observer.observe(el);
+        });
+
+        // Toggle Theme Function
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+
+        // Toggle Mobile Menu
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
